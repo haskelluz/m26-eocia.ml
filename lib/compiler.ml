@@ -22,7 +22,36 @@ let uniquify gensym expr =
   loop Env.empty expr
 ;;
 
+let remove_complex_operands gensym expr =
+  let wrap binds expr = List.fold_right (fun (name, value) acc -> `Let (name, value, acc)) binds expr in
+  let rec rco_atom expr =
+    match expr with
+    | `Lit n -> [], `Lit n
+    | `Var n -> [], `Var n
+    | `Let (name, value, body) ->
+      let binds, atom = rco_atom body in
+      (name, rco_expr value) :: binds, atom
+    | other ->
+      let tmp = gensym "tmp." in
+      [ tmp, rco_expr other ], `Var tmp
+  and rco_expr expr =
+    match expr with
+    | `Lit n -> `Atom (`Lit n)
+    | `Var n -> `Atom (`Var n)
+    | `Let (name, value, body) -> `Let (name, rco_expr value, rco_expr body)
+    | `NulApp op -> `NulApp op
+    | `UnApp (op, a) ->
+      let binds, a2 = rco_atom a in
+      wrap binds (`UnApp (op, a2))
+    | `BinApp (op, a, b) ->
+      let binds_a, a2 = rco_atom a in
+      let binds_b, b2 = rco_atom b in
+      wrap (binds_a @ binds_b) (`BinApp (op, a2, b2))
+  in
+  rco_expr expr
+;;
+
 let compile expr =
   let gensym = make_gensym () in
-  uniquify gensym expr
+  expr |> uniquify gensym |> remove_complex_operands gensym
 ;;
