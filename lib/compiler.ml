@@ -90,10 +90,39 @@ let select_instructions cvar =
   select_tail cvar
 ;;
 
+let assign_homes instrs =
+  let env = Hashtbl.create 16 in
+  let offset = ref 0 in
+  let spill arg =
+    match arg with
+    | `Imm n -> `Imm n
+    | `Reg r -> `Reg r
+    | `Var name ->
+      (match Hashtbl.find_opt env name with
+       | Some loc -> loc
+       | None ->
+         offset := !offset - 8;
+         let loc = `Deref (!offset, `Reg `rbp) in
+         Hashtbl.add env name loc;
+         loc)
+  in
+  let assign_instr instr =
+    match instr with
+    | `addq (src, dst) -> `addq (spill src, spill dst)
+    | `subq (src, dst) -> `subq (spill src, spill dst)
+    | `negq dst -> `negq (spill dst)
+    | `movq (src, dst) -> `movq (spill src, spill dst)
+    | (`pushq _ | `popq _ | `callq _ | `retq | `jmp) as instr -> instr
+  in
+  let instrs2 = List.map assign_instr instrs in
+  instrs2, abs !offset
+;;
+
 let compile expr =
   let gensym = make_gensym () in
   let lvarmon = expr |> uniquify gensym |> remove_complex_operands gensym in
   let cvar = explicate_control lvarmon in
   let x86var = select_instructions cvar in
-  x86var
+  let x86, _frame_size = assign_homes x86var in
+  x86
 ;;
