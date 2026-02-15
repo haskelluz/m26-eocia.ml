@@ -118,6 +118,17 @@ let assign_homes instrs =
   instrs2, abs !offset
 ;;
 
+let patch_instructions instrs =
+  let patch instr =
+    match instr with
+    | `addq ((`Deref _ as src), (`Deref _ as dst)) -> [ `movq (src, `Reg `rax); `addq (`Reg `rax, dst) ]
+    | `subq ((`Deref _ as src), (`Deref _ as dst)) -> [ `movq (src, `Reg `rax); `subq (`Reg `rax, dst) ]
+    | `movq ((`Deref _ as src), (`Deref _ as dst)) -> [ `movq (src, `Reg `rax); `movq (`Reg `rax, dst) ]
+    | instr -> [ instr ]
+  in
+  List.concat_map patch instrs
+;;
+
 let compile expr =
   let gensym = make_gensym () in
   let lvarmon = expr |> uniquify gensym |> remove_complex_operands gensym in
