@@ -1,0 +1,7 @@
+(test
+ (name compiler_test)
+ (libraries alcotest eociaml))
+
+(test
+ (name interpreter_test)
+ (libraries alcotest eociaml))
