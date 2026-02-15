@@ -68,7 +68,32 @@ let rec explicate_control expr =
   | `BinApp (op, a, b) -> `Return (`BinApp (op, a, b))
 ;;
 
+let select_instructions cvar =
+  let select_arg atom =
+    match atom with
+    | `Lit n -> `Imm n
+    | `Var n -> `Var n
+  in
+  let select_expr dest expr =
+    match expr with
+    | `Atom a -> [ `movq (select_arg a, dest) ]
+    | `NulApp `Read -> [ `callq "read_int"; `movq (`Reg `rax, dest) ]
+    | `UnApp (`Neg, a) -> [ `movq (select_arg a, dest); `negq dest ]
+    | `BinApp (`Add, a, b) -> [ `movq (select_arg a, dest); `addq (select_arg b, dest) ]
+    | `BinApp (`Sub, a, b) -> [ `movq (select_arg a, dest); `subq (select_arg b, dest) ]
+  in
+  let rec select_tail cvar =
+    match cvar with
+    | `Return expr -> select_expr (`Reg `rax) expr
+    | `Seq (`Assign (name, value), cont) -> select_expr (`Var name) value @ select_tail cont
+  in
+  select_tail cvar
+;;
+
 let compile expr =
   let gensym = make_gensym () in
-  expr |> uniquify gensym |> remove_complex_operands gensym
+  let lvarmon = expr |> uniquify gensym |> remove_complex_operands gensym in
+  let cvar = explicate_control lvarmon in
+  let x86var = select_instructions cvar in
+  x86var
 ;;
