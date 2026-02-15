@@ -51,6 +51,23 @@ let remove_complex_operands gensym expr =
   rco_expr expr
 ;;
 
+let rec explicate_control expr =
+  let rec explicate_assign name expr cont =
+    match expr with
+    | `Atom atom -> `Seq (`Assign (name, `Atom atom), cont)
+    | `Let (name2, value2, body) -> explicate_assign name2 value2 (explicate_assign name body cont)
+    | `NulApp op -> `Seq (`Assign (name, `NulApp op), cont)
+    | `UnApp (op, a) -> `Seq (`Assign (name, `UnApp (op, a)), cont)
+    | `BinApp (op, a, b) -> `Seq (`Assign (name, `BinApp (op, a, b)), cont)
+  in
+  match expr with
+  | `Atom atom -> `Return (`Atom atom)
+  | `Let (name, value, body) -> explicate_assign name value (explicate_control body)
+  | `NulApp op -> `Return (`NulApp op)
+  | `UnApp (op, a) -> `Return (`UnApp (op, a))
+  | `BinApp (op, a, b) -> `Return (`BinApp (op, a, b))
+;;
+
 let compile expr =
   let gensym = make_gensym () in
   expr |> uniquify gensym |> remove_complex_operands gensym
