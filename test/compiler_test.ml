@@ -1,7 +1,7 @@
-(* open Alcotest *)
-(* open Eociaml *)
+open Alcotest
+open Eociaml
 
-(* let test_uniquify_shadowing () =
+let test_uniquify_shadowing () =
   let gensym = Compiler.make_gensym () in
   let input = `Let ("x", `Lit 32, `BinApp (`Add, `Let ("x", `Lit 10, `Var "x"), `Var "x")) in
   let expected = `Let ("x.1", `Lit 32, `BinApp (`Add, `Let ("x.2", `Lit 10, `Var "x.2"), `Var "x.1")) in
@@ -57,7 +57,15 @@ let test_rco_let_unchanged () =
 
 let test_explicate_control () =
   let gensym = Compiler.make_gensym () in
+  (* (let [y (let [x 20] (+ x (let [x 22] x)))] y) *)
+  (*  *)
   let input = `Let ("y", `Let ("x", `Lit 20, `BinApp (`Add, `Var "x", `Let ("x", `Lit 22, `Var "x"))), `Var "y") in
+  (*
+  x.2 = 20
+  x.3 = 22
+  y.1 = (+ x.2 x.3)
+  return y.1
+  *)
   let expected =
     `Seq
       ( `Assign ("x.2", `Atom (`Lit 20))
@@ -201,7 +209,7 @@ let () =
     "Compiler"
     [ ( "uniquify"
       , [ test_case "shadowing" `Quick test_uniquify_shadowing; test_case "shadowing 2" `Quick test_uniquify_shadowing_2 ] )
-    ; ( "rco"
+    ; ( "remove_complex_operands"
       , [ test_case "nested binapp" `Quick test_rco_nested_binapp
         ; test_case "simple binapp" `Quick test_rco_simple_binapp
         ; test_case "unapp complex" `Quick test_rco_unapp_complex
@@ -231,4 +239,4 @@ let () =
         ; test_case "no stack" `Quick test_prelude_and_conclusion_no_stack
         ] )
     ]
-;; *)
+;;
