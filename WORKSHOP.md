@@ -323,10 +323,10 @@ instr src dst
 {pause}
 
 ```
-addq src dst        ; dst = dst + src
-subq src dst        ; dst = dst - src
+addq src dst         ; dst = dst + src
+subq src dst         ; dst = dst - src
 negq dst             ; dst = -dst
-movq src dst        ; dst = src
+movq src dst         ; dst = src
 pushq src            ; push onto stack
 popq dst             ; pop from stack
 callq label          ; jumps to the procedure specified by the label
