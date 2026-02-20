@@ -752,6 +752,7 @@ conclusion:
 ---
 
 {slide pause}
+---
 ## Takeaways
 
 We've learnt (some) AT&T `x86-64` assembly, how stack works and calling conventions.
