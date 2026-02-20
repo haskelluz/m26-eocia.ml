@@ -5,14 +5,14 @@
   let gensym = Compiler.make_gensym () in
   let input = `Let ("x", `Lit 32, `BinApp (`Add, `Let ("x", `Lit 10, `Var "x"), `Var "x")) in
   let expected = `Let ("x.1", `Lit 32, `BinApp (`Add, `Let ("x.2", `Lit 10, `Var "x.2"), `Var "x.1")) in
-  assert (Compiler.uniquify ~gensym input = expected)
+  assert (Compiler.uniquify gensym input = expected)
 ;;
 
 let test_uniquify_shadowing_2 () =
   let gensym = Compiler.make_gensym () in
   let input = `Let ("x", `Let ("x", `Lit 4, `BinApp (`Add, `Var "x", `Lit 1)), `BinApp (`Add, `Var "x", `Lit 2)) in
   let expected = `Let ("x.1", `Let ("x.2", `Lit 4, `BinApp (`Add, `Var "x.2", `Lit 1)), `BinApp (`Add, `Var "x.1", `Lit 2)) in
-  assert (Compiler.uniquify ~gensym input = expected)
+  assert (Compiler.uniquify gensym input = expected)
 ;;
 
 let test_rco_nested_binapp () =
@@ -21,13 +21,13 @@ let test_rco_nested_binapp () =
   let input = `BinApp (`Add, `BinApp (`Add, `Lit 1, `Lit 2), `Lit 3) in
   (* (let [tmp.1 (+ 1 2)] (+ tmp.1 3)) *)
   let expected = `Let ("tmp.1", `BinApp (`Add, `Lit 1, `Lit 2), `BinApp (`Add, `Var "tmp.1", `Lit 3)) in
-  assert (Compiler.remove_complex_operands ~gensym input = expected)
+  assert (Compiler.remove_complex_operands gensym input = expected)
 ;;
 
 let test_rco_simple_binapp () =
   let gensym = Compiler.make_gensym () in
   let input = `BinApp (`Add, `Lit 1, `Lit 2) in
-  assert (Compiler.remove_complex_operands ~gensym input = input)
+  assert (Compiler.remove_complex_operands gensym input = input)
 ;;
 
 let test_rco_unapp_complex () =
@@ -36,7 +36,7 @@ let test_rco_unapp_complex () =
   let input = `UnApp (`Neg, `BinApp (`Add, `Lit 1, `Lit 2)) in
   (* (let [tmp.1 (+ 1 2)] (- tmp.1)) *)
   let expected = `Let ("tmp.1", `BinApp (`Add, `Lit 1, `Lit 2), `UnApp (`Neg, `Var "tmp.1")) in
-  assert (Compiler.remove_complex_operands ~gensym input = expected)
+  assert (Compiler.remove_complex_operands gensym input = expected)
 ;;
 
 let test_rco_both_complex () =
@@ -45,14 +45,14 @@ let test_rco_both_complex () =
   let input = `BinApp (`Add, `NulApp `Read, `NulApp `Read) in
   (* (let [tmp.1 (read)] (let [tmp.2 (read)] (+ tmp.1 tmp.2))) *)
   let expected = `Let ("tmp.1", `NulApp `Read, `Let ("tmp.2", `NulApp `Read, `BinApp (`Add, `Var "tmp.1", `Var "tmp.2"))) in
-  assert (Compiler.remove_complex_operands ~gensym input = expected)
+  assert (Compiler.remove_complex_operands gensym input = expected)
 ;;
 
 let test_rco_let_unchanged () =
   let gensym = Compiler.make_gensym () in
   let input = `Let ("a", `Lit 42, `Let ("b", `Var "a", `Var "b")) in
   let expected = `Let ("a", `Atom (`Lit 42), `Let ("b", `Atom (`Var "a"), `Atom (`Var "b"))) in
-  assert (Compiler.remove_complex_operands ~gensym input = expected)
+  assert (Compiler.remove_complex_operands gensym input = expected)
 ;;
 
 let test_explicate_control () =
@@ -65,7 +65,7 @@ let test_explicate_control () =
           ( `Assign ("x.3", `Atom (`Lit 22))
           , `Seq (`Assign ("y.1", `BinApp (`Add, `Var "x.2", `Var "x.3")), `Return (`Atom (`Var "y.1"))) ) )
   in
-  assert (input |> Compiler.uniquify ~gensym |> Compiler.remove_complex_operands ~gensym |> Compiler.explicate_control = expected)
+  assert (input |> Compiler.uniquify gensym |> Compiler.remove_complex_operands gensym |> Compiler.explicate_control = expected)
 ;;
 
 let test_select_return_lit () =
