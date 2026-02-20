@@ -112,7 +112,7 @@ let assign_homes instrs =
     | `subq (src, dst) -> `subq (spill src, spill dst)
     | `negq dst -> `negq (spill dst)
     | `movq (src, dst) -> `movq (spill src, spill dst)
-    | (`pushq _ | `popq _ | `callq _ | `retq | `jmp) as instr -> instr
+    | (`pushq _ | `popq _ | `callq _ | `retq | `jmp _) as instr -> instr
   in
   let instrs2 = List.map assign_instr instrs in
   instrs2, abs !offset
@@ -129,11 +129,24 @@ let patch_instructions instrs =
   List.concat_map patch instrs
 ;;
 
+let prelude_and_conclusion ~frame_size instrs =
+  let size = (frame_size mod 16) + frame_size in
+  let prelude =
+    [ `pushq (`Reg `rbp); `movq (`Reg `rsp, `Reg `rbp) ]
+    @ (if size > 0 then [ `subq (`Imm size, `Reg `rsp) ] else [])
+    @ [ `jmp "start" ]
+  in
+  let start = instrs @ [ `jmp "conclusion" ] in
+  let conclusion = (if size > 0 then [ `addq (`Imm size, `Reg `rsp) ] else []) @ [ `popq (`Reg `rbp); `retq ] in
+  [ "main", prelude; "start", start; "conclusion", conclusion ]
+;;
+
 let compile expr =
   let gensym = make_gensym () in
   let lvarmon = expr |> uniquify gensym |> remove_complex_operands gensym in
   let cvar = explicate_control lvarmon in
   let x86var = select_instructions cvar in
-  let x86, _frame_size = assign_homes x86var in
-  x86
+  let x86, frame_size = assign_homes x86var in
+  let patched = patch_instructions x86 in
+  prelude_and_conclusion ~frame_size patched
 ;;
